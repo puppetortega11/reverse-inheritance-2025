@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { Connection, PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const axios = require('axios');
+const OpenAI = require('openai');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -9,13 +10,19 @@ const PORT = process.env.PORT || 8000;
 // Initialize Solana connection
 const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com');
 
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
 // In-memory storage for demo (in production, use a database)
 let botState = {
   isRunning: false,
   strategy: null,
   walletAddress: null,
   trades: [],
-  balance: 0
+  balance: 0,
+  aiStrategy: null
 };
 
 app.use(cors());
@@ -35,11 +42,12 @@ app.get('/health', (req, res) => {
 app.get('/api/bot/status', (req, res) => {
   res.json({
     status: botState.isRunning ? 'running' : 'ready',
-    strategies: ['momentum', 'market_making', 'dip_buy'],
+    strategies: ['momentum', 'market_making', 'dip_buy', 'ai_generated'],
     currentStrategy: botState.strategy,
     walletAddress: botState.walletAddress,
     balance: botState.balance,
     tradesCount: botState.trades.length,
+    aiStrategy: botState.aiStrategy,
     timestamp: new Date().toISOString()
   });
 });
@@ -155,6 +163,59 @@ app.post('/api/wallet/send', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Transaction failed' });
+  }
+});
+
+// OpenAI Strategy Generation endpoint
+app.post('/api/strategy/generate', async (req, res) => {
+  const { prompt } = req.body;
+  
+  if (!prompt || !prompt.trim()) {
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are a Solana trading bot strategy generator. Convert natural language trading instructions into a structured trading strategy. 
+
+Respond with a clear, actionable trading strategy that includes:
+1. Entry conditions (when to buy)
+2. Exit conditions (when to sell) 
+3. Risk management (stop loss, take profit)
+4. Position sizing
+5. Trading pairs to focus on
+
+Keep it concise and practical for automated trading on Solana.`
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    });
+
+    const strategy = completion.choices[0].message.content;
+    
+    // Store the AI strategy
+    botState.aiStrategy = strategy;
+
+    res.json({
+      success: true,
+      strategy: strategy,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('OpenAI API error:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate strategy',
+      details: error.message 
+    });
   }
 });
 
