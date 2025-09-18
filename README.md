@@ -4,19 +4,17 @@ A complete Solana trading bot system with frontend and backend components.
 
 ## 🏗️ **Architecture**
 
-This project consists of two separate applications:
+This is a **monorepo** containing both frontend and backend:
 
-### **Frontend** (This Repository)
+### **Frontend** (Root Directory)
 - **Framework**: Next.js with React
 - **Deployment**: Vercel
 - **Features**: Wallet connection, bot controls, trade history
-- **Branch**: `main`
 
-### **Backend** (Separate Repository)
+### **Backend** (`/backend` Directory)
 - **Framework**: Express.js with Solana Web3.js
 - **Deployment**: Railway
 - **Features**: Trading API, wallet balance, bot management
-- **Repository**: `reverse-inheritance-backend`
 
 ## 🚀 **Deployment Instructions**
 
@@ -25,14 +23,16 @@ This project consists of two separate applications:
 2. Sign in with GitHub
 3. New Project → Import from GitHub
 4. Select: `reverse-inheritance-2025` (this repository)
-5. Deploy!
+5. **Root Directory**: Leave as `/` (default)
+6. Deploy!
 
 ### **2. Deploy Backend to Railway**
 1. Go to [railway.app](https://railway.app)
 2. Sign in with GitHub
 3. New Project → Deploy from GitHub repo
-4. Select: `reverse-inheritance-backend` repository
-5. Deploy!
+4. Select: `reverse-inheritance-2025` (this repository)
+5. **Root Directory**: Set to `/backend`
+6. Deploy!
 
 ### **3. Connect Frontend to Backend**
 1. Copy your Railway backend URL
@@ -44,19 +44,19 @@ This project consists of two separate applications:
 ## 📁 **Repository Structure**
 
 ```
-reverse-inheritance-2025/          # Frontend (Vercel)
-├── src/app/page.tsx              # Main interface
-├── src/components/                # React components
+reverse-inheritance-2025/          # Monorepo
+├── src/app/page.tsx              # Frontend main interface
+├── src/components/                # Frontend React components
 ├── src/__tests__/                # Frontend tests
 ├── vercel.json                   # Vercel config
-└── package.json                  # Next.js dependencies
-
-reverse-inheritance-backend/       # Backend (Railway)
-├── server.js                     # Express server
-├── test-runner.js                # Backend tests
-├── e2e-test.js                   # End-to-end tests
-├── railway.toml                  # Railway config
-└── package.json                  # Express + Solana deps
+├── package.json                  # Frontend dependencies
+├── backend/                       # Backend directory
+│   ├── server.js                 # Express server
+│   ├── test-runner.js            # Backend tests
+│   ├── e2e-test.js               # End-to-end tests
+│   ├── railway.toml              # Railway config
+│   └── package.json              # Backend dependencies
+└── README.md                     # This file
 ```
 
 ## 🎯 **Features**
@@ -69,9 +69,17 @@ reverse-inheritance-backend/       # Backend (Railway)
 
 ## 🧪 **Testing**
 
-- **Frontend Tests**: `npm test` (3/3 passing)
-- **Backend Tests**: `npm test` (7/7 passing)
-- **End-to-End Tests**: `node e2e-test.js` (5/5 passing)
+### **Frontend Tests**
+```bash
+npm test  # 3/3 passing
+```
+
+### **Backend Tests**
+```bash
+cd backend
+npm test  # 7/7 passing
+node e2e-test.js  # 5/5 passing
+```
 
 ## 📞 **Support**
 
@@ -79,3 +87,4 @@ If you encounter any issues:
 1. Check the deployment logs in Vercel/Railway
 2. Ensure environment variables are set correctly
 3. Verify both services are running and accessible
+4. Make sure Railway is configured with `/backend` as root directory
