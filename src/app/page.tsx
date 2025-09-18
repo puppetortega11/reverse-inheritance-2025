@@ -11,6 +11,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:800
 export default function Home() {
   const [botStatus, setBotStatus] = useState<any>(null);
   const [trades, setTrades] = useState<any[]>([]);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +22,16 @@ export default function Home() {
       setBotStatus(data);
     } catch (err) {
       console.error('Failed to fetch bot status:', err);
+    }
+  };
+
+  const fetchWalletBalance = async (walletAddress: string) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/wallet/balance/${walletAddress}`);
+      const data = await response.json();
+      setWalletBalance(data.balance);
+    } catch (err) {
+      console.error('Failed to fetch wallet balance:', err);
     }
   };
 
@@ -57,30 +68,45 @@ export default function Home() {
           <WalletButton 
             onWalletChange={(walletAddress) => {
               if (walletAddress) {
+                fetchWalletBalance(walletAddress);
                 fetchTrades(walletAddress);
               }
             }}
           />
+          {walletBalance !== null && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <div className="text-sm text-gray-600">Wallet Balance</div>
+              <div className="text-lg font-bold text-blue-600">{walletBalance.toFixed(4)} SOL</div>
+            </div>
+          )}
         </div>
 
         {botStatus && (
           <div className="card">
             <h2 className="font-bold mb-4">Bot Status</h2>
-            <div className="grid grid-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <div className="text-sm">Status</div>
-                <div className={`status ${botStatus.status === 'ready' ? 'status-success' : 'status-warning'}`}>
+                <div className="text-sm text-gray-600">Status</div>
+                <div className={`font-bold ${botStatus.status === 'ready' ? 'text-green-600' : 'text-yellow-600'}`}>
                   {botStatus.status}
                 </div>
               </div>
               <div>
-                <div className="text-sm">Available Strategies</div>
-                <div className="text-sm">{botStatus.strategies?.join(', ')}</div>
+                <div className="text-sm text-gray-600">Current Strategy</div>
+                <div className="text-sm font-medium">{botStatus.currentStrategy || 'None'}</div>
               </div>
               <div>
-                <div className="text-sm">Last Updated</div>
-                <div className="text-sm">{new Date(botStatus.timestamp).toLocaleTimeString()}</div>
+                <div className="text-sm text-gray-600">Bot Balance</div>
+                <div className="text-sm font-medium">{botStatus.balance?.toFixed(4) || '0.0000'} SOL</div>
               </div>
+              <div>
+                <div className="text-sm text-gray-600">Trades Count</div>
+                <div className="text-sm font-medium">{botStatus.tradesCount || 0}</div>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t">
+              <div className="text-sm text-gray-600">Available Strategies</div>
+              <div className="text-sm">{botStatus.strategies?.join(', ')}</div>
             </div>
           </div>
         )}
