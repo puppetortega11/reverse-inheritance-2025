@@ -1,6 +1,6 @@
 {
   "name": "reverse-inheritance-frontend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple frontend for Reverse Inheritance Trading Bot",
   "scripts": {
     "dev": "next dev",
