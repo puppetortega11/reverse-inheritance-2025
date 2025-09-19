@@ -277,6 +277,51 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Fund Bot Section */}
+        <div className="card">
+          <h2 className="font-bold mb-4">💰 Fund Bot Wallet</h2>
+          <div className="space-y-4">
+            {botWalletAddress && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="text-sm text-blue-600 mb-1">Bot Wallet Address:</div>
+                <div className="font-mono text-sm break-all">{botWalletAddress}</div>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Amount to send (SOL):
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="100"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., 1.5"
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                disabled={isTransferring || !connected || !botWalletAddress}
+              />
+            </div>
+            
+            <button
+              onClick={transferToBot}
+              disabled={!transferAmount || parseFloat(transferAmount) <= 0 || isTransferring || !connected || !botWalletAddress}
+              className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isTransferring ? 'Sending SOL...' : 'Send SOL to Bot'}
+            </button>
+            
+            {botBalance !== null && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="text-sm text-green-600 mb-1">Current Bot Balance:</div>
+                <div className="text-lg font-bold text-green-700">{botBalance.toFixed(4)} SOL</div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="card">
           <h2 className="font-bold mb-4">Bot Controls</h2>
           <div className="flex gap-4">

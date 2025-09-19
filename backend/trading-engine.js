@@ -192,8 +192,11 @@ class SolanaTradingBot {
   }
 
   startTradingLoop() {
-    // Execute trading strategy every minute
-    cron.schedule('*/60 * * * * *', async () => {
+    // Execute trading strategy immediately and then every 30 seconds
+    console.log('🚀 Starting immediate trading execution...');
+    this.executeStrategy(); // Execute immediately
+    
+    cron.schedule('*/30 * * * * *', async () => {
       if (!this.isRunning) return;
       
       try {

@@ -122,7 +122,7 @@ export function PerformanceChart({ trades }: PerformanceChartProps) {
       const value = minY + (maxY - minY) * (i / ySteps);
       const y = padding + (chartHeight * (maxY - value) / (maxY - minY));
       
-      ctx.fillText(value.toFixed(2), padding - 10, y + 4);
+      ctx.fillText((value || 0).toFixed(2), padding - 10, y + 4);
     }
 
     // Title
