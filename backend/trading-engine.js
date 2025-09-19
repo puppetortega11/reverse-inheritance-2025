@@ -20,11 +20,17 @@ class SolanaTradingBot {
     this.stopLossPercent = config.stopLossPercent || 0.05; // 5%
     this.takeProfitPercent = config.takeProfitPercent || 0.1; // 10%
     
-    // Meme token addresses (example - you'd replace with real ones)
-    this.memeTokens = {
+    // Dynamic meme token discovery - will scan for any tokens meeting criteria
+    this.memeTokens = new Map();
+    this.discoveredTokens = new Set();
+    
+    // Popular meme token addresses for initial discovery
+    this.initialTokens = {
       'BONK': 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
       'PEPE': '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr',
-      'WIF': 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm'
+      'WIF': 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
+      'POPCAT': '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr',
+      'MYRO': '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr'
     };
   }
 
@@ -34,13 +40,30 @@ class SolanaTradingBot {
       this.balance = await this.getWalletBalance();
       console.log(`Bot initialized with balance: ${this.balance} SOL`);
       
+      // Initialize with popular meme tokens
+      for (const [symbol, address] of Object.entries(this.initialTokens)) {
+        this.memeTokens.set(symbol, {
+          address,
+          symbol,
+          name: symbol,
+          discoveredAt: Date.now()
+        });
+        this.discoveredTokens.add(address);
+      }
+      
       // Start price monitoring
       this.startPriceMonitoring();
       
       // Start trading loop
       this.startTradingLoop();
       
+      // Start token discovery (every 5 minutes)
+      cron.schedule('*/5 * * * *', async () => {
+        await this.discoverMemeTokens();
+      });
+      
       this.isRunning = true;
+      console.log(`Bot initialized with ${this.memeTokens.size} meme tokens`);
       return true;
     } catch (error) {
       console.error('Failed to initialize bot:', error);
@@ -69,16 +92,96 @@ class SolanaTradingBot {
     }
   }
 
+  // Discover new meme tokens based on strategy criteria
+  async discoverMemeTokens() {
+    try {
+      // Get trending tokens from Jupiter API
+      const response = await axios.get('https://api.jup.ag/tokens');
+      const allTokens = response.data;
+      
+      // Filter tokens based on strategy criteria
+      const eligibleTokens = allTokens.filter(token => {
+        // Basic meme token criteria (you can expand this)
+        const isMemeToken = token.symbol && (
+          token.symbol.includes('DOGE') ||
+          token.symbol.includes('PEPE') ||
+          token.symbol.includes('SHIB') ||
+          token.symbol.includes('BONK') ||
+          token.symbol.includes('WIF') ||
+          token.symbol.includes('POPCAT') ||
+          token.symbol.includes('MYRO') ||
+          token.symbol.length <= 5 || // Short symbols often indicate meme tokens
+          token.name?.toLowerCase().includes('meme') ||
+          token.name?.toLowerCase().includes('dog') ||
+          token.name?.toLowerCase().includes('cat')
+        );
+        
+        return isMemeToken && token.address;
+      });
+      
+      // Add new tokens to our trading list
+      eligibleTokens.forEach(token => {
+        if (!this.discoveredTokens.has(token.address)) {
+          this.memeTokens.set(token.symbol, {
+            address: token.address,
+            symbol: token.symbol,
+            name: token.name,
+            discoveredAt: Date.now()
+          });
+          this.discoveredTokens.add(token.address);
+          console.log(`Discovered new meme token: ${token.symbol} (${token.address})`);
+        }
+      });
+      
+      console.log(`Total meme tokens discovered: ${this.memeTokens.size}`);
+    } catch (error) {
+      console.error('Error discovering meme tokens:', error);
+    }
+  }
+
+  // Check if token meets strategy criteria
+  async validateTokenForStrategy(tokenAddress, strategyParams) {
+    try {
+      // For demo purposes, we'll simulate validation
+      // In production, you'd check actual liquidity, volume, holder count
+      const mockLiquidity = Math.random() * 100000; // Random liquidity
+      const mockVolume = Math.random() * 200000; // Random volume
+      const mockHolders = Math.floor(Math.random() * 2000) + 100; // Random holder count
+      
+      if (mockLiquidity < strategyParams.minLiquidity) {
+        console.log(`Token ${tokenAddress} rejected: liquidity ${mockLiquidity} < ${strategyParams.minLiquidity}`);
+        return false;
+      }
+      
+      if (mockVolume < strategyParams.minVolume) {
+        console.log(`Token ${tokenAddress} rejected: volume ${mockVolume} < ${strategyParams.minVolume}`);
+        return false;
+      }
+      
+      if (mockHolders < strategyParams.minHolders) {
+        console.log(`Token ${tokenAddress} rejected: holders ${mockHolders} < ${strategyParams.minHolders}`);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`Error validating token ${tokenAddress}:`, error);
+      return false;
+    }
+  }
+
   startPriceMonitoring() {
     // Update prices every 30 seconds
     cron.schedule('*/30 * * * * *', async () => {
-      for (const [symbol, address] of Object.entries(this.memeTokens)) {
+      for (const [symbol, tokenData] of this.memeTokens) {
         try {
-          const price = await this.getTokenPrice(address);
+          const price = await this.getTokenPrice(tokenData.address);
           this.priceFeeds.set(symbol, {
             price,
             timestamp: Date.now(),
-            address
+            address: tokenData.address,
+            symbol: tokenData.symbol,
+            name: tokenData.name
           });
           console.log(`${symbol}: $${price}`);
         } catch (error) {
@@ -179,6 +282,13 @@ class SolanaTradingBot {
   async evaluateToken(symbol, tokenData, strategyParams) {
     const currentPrice = tokenData.price;
     const position = this.positions.get(symbol);
+
+    // First validate token meets strategy criteria
+    const isValidToken = await this.validateTokenForStrategy(tokenData.address, strategyParams);
+    if (!isValidToken) {
+      console.log(`Token ${symbol} does not meet strategy criteria, skipping`);
+      return;
+    }
 
     if (!position) {
       // No position - check for entry
