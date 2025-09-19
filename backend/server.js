@@ -76,6 +76,83 @@ app.get('/api/wallet/balance/:walletAddress', async (req, res) => {
   }
 });
 
+// Transfer SOL to bot wallet endpoint
+app.post('/api/bot/fund', async (req, res) => {
+  const { userWalletAddress, amount } = req.body;
+  
+  if (!userWalletAddress || !amount) {
+    return res.status(400).json({ error: 'Missing user wallet address or amount' });
+  }
+
+  try {
+    // Validate user wallet address
+    new PublicKey(userWalletAddress);
+    
+    // Create the bot wallet keypair (deterministic)
+    const userSeed = userWalletAddress.slice(0, 32);
+    const botKeypair = Keypair.fromSeed(new Uint8Array(userSeed.split('').map(c => c.charCodeAt(0))));
+    
+    // Get current balances
+    const userBalance = await connection.getBalance(new PublicKey(userWalletAddress));
+    const botBalance = await connection.getBalance(botKeypair.publicKey);
+    
+    const solAmount = parseFloat(amount);
+    const lamportsToSend = Math.floor(solAmount * LAMPORTS_PER_SOL);
+    
+    // Validate amount
+    if (solAmount <= 0 || solAmount > 100) {
+      return res.status(400).json({ error: 'Amount must be between 0 and 100 SOL' });
+    }
+    
+    // Check user has enough balance
+    if (userBalance < lamportsToSend) {
+      return res.status(400).json({ 
+        error: 'Insufficient balance',
+        userBalance: userBalance / LAMPORTS_PER_SOL,
+        requestedAmount: solAmount
+      });
+    }
+    
+    // Create transaction to send SOL to bot
+    const transaction = new Transaction();
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: new PublicKey(userWalletAddress),
+        toPubkey: botKeypair.publicKey,
+        lamports: lamportsToSend
+      })
+    );
+    
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(userWalletAddress);
+    
+    // Serialize transaction for user to sign
+    const serializedTransaction = transaction.serialize({ requireAllSignatures: false });
+    
+    console.log(`Prepared SOL transfer: ${solAmount} SOL from ${userWalletAddress} to bot ${botKeypair.publicKey.toBase58()}`);
+    
+    res.json({
+      success: true,
+      message: `Transfer prepared: ${solAmount} SOL to bot wallet`,
+      transaction: {
+        fromWallet: userWalletAddress,
+        toWallet: botKeypair.publicKey.toBase58(),
+        amount: solAmount,
+        lamports: lamportsToSend
+      },
+      serializedTransaction: serializedTransaction.toString('base64'),
+      instructions: 'Transaction prepared. Sign and send using your wallet.',
+      botWalletAddress: botKeypair.publicKey.toBase58(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error creating transfer:', error);
+    res.status(400).json({ error: 'Invalid wallet address or amount' });
+  }
+});
+
 // Generate unique bot wallet for user
 app.post('/api/bot/generate-wallet', async (req, res) => {
   const { userWalletAddress } = req.body;

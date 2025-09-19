@@ -7,11 +7,13 @@ import { BotControls } from '@/components/BotControls';
 import { TradeHistory } from '@/components/TradeHistory';
 import { PerformanceChart } from '@/components/PerformanceChart';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { Transaction, Connection } from '@solana/web3.js';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export default function Home() {
-  const { connected, publicKey } = useWallet();
+  const { connected, publicKey, sendTransaction } = useWallet();
+  const connection = new Connection('https://api.devnet.solana.com');
   const [botStatus, setBotStatus] = useState<any>(null);
   const [trades, setTrades] = useState<any[]>([]);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
@@ -185,33 +187,42 @@ export default function Home() {
 
   // Function to transfer money to bot
   const transferToBot = async () => {
-    if (!transferAmount || !botWalletAddress) return;
+    if (!transferAmount || !botWalletAddress || !publicKey) return;
 
     setIsTransferring(true);
     setError(null);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/wallet/send-to-bot`, {
+      const response = await fetch(`${BACKEND_URL}/api/bot/fund`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fromWallet: 'user-wallet-address', // Replace with actual connected wallet
-          amount: parseFloat(transferAmount),
-          botWalletAddress: botWalletAddress
+          userWalletAddress: publicKey.toBase58(),
+          amount: parseFloat(transferAmount)
         })
       });
 
       const data = await response.json();
 
       if (data.success) {
-        alert(`Transfer prepared: ${transferAmount} SOL to bot wallet`);
+        // Transaction prepared, now we need to sign and send it
+        const transaction = Transaction.from(Buffer.from(data.serializedTransaction, 'base64'));
+        
+        // Sign and send transaction using wallet
+        const signature = await sendTransaction(transaction, connection);
+        
+        // Wait for confirmation
+        await connection.confirmTransaction(signature, 'confirmed');
+        
+        alert(`Transfer successful! ${transferAmount} SOL sent to bot wallet.\nTransaction: ${signature}`);
         setTransferAmount('');
-        fetchWalletBalance('user-wallet-address'); // Refresh balance
+        fetchBotBalance(); // Refresh bot balance
+        fetchWalletBalance(publicKey.toBase58()); // Refresh user balance
       } else {
-        throw new Error(data.error || 'Failed to transfer');
+        throw new Error(data.error || 'Failed to prepare transfer');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to transfer');
+      setError(err.message || 'Failed to transfer SOL');
       console.error(err);
     } finally {
       setIsTransferring(false);
@@ -343,13 +354,36 @@ export default function Home() {
             )}
             
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h3 className="font-semibold text-yellow-800 mb-2">Step 3: Send SOL from Your Wallet</h3>
+              <h3 className="font-semibold text-yellow-800 mb-2">Step 3: Fund Bot Wallet</h3>
               <p className="text-yellow-700 text-sm mb-3">
-                Use your Phantom/Solflare wallet to send SOL to the bot address above. 
-                Minimum: 0.1 SOL (for trading), Recommended: 1-5 SOL
+                Send SOL to your bot wallet. Minimum: 0.1 SOL (for trading), Recommended: 1-5 SOL
               </p>
-              <div className="text-sm text-yellow-600">
-                💡 <strong>Tip:</strong> Send SOL directly from your wallet app, not through this interface
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount to send (SOL):
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="100"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g., 1.5"
+                    value={transferAmount}
+                    onChange={(e) => setTransferAmount(e.target.value)}
+                    disabled={isTransferring || !connected || !botWalletAddress}
+                  />
+                </div>
+                
+                <button
+                  onClick={transferToBot}
+                  disabled={!transferAmount || parseFloat(transferAmount) <= 0 || isTransferring || !connected || !botWalletAddress}
+                  className="w-full bg-yellow-600 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {isTransferring ? 'Preparing Transfer...' : 'Send SOL to Bot'}
+                </button>
               </div>
             </div>
             
