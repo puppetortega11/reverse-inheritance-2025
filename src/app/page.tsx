@@ -6,10 +6,12 @@ import { WalletButton } from '@/components/WalletButton';
 import { BotControls } from '@/components/BotControls';
 import { TradeHistory } from '@/components/TradeHistory';
 import { PerformanceChart } from '@/components/PerformanceChart';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export default function Home() {
+  const { connected } = useWallet();
   const [botStatus, setBotStatus] = useState<any>(null);
   const [trades, setTrades] = useState<any[]>([]);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
@@ -388,4 +390,3 @@ export default function Home() {
     </WalletProvider>
   );
 }
-<!-- Force deployment Thu Sep 18 20:55:36 PDT 2025 -->
