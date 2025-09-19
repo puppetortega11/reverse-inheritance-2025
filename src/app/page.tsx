@@ -11,7 +11,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export default function Home() {
-  const { connected } = useWallet();
+  const { connected, publicKey } = useWallet();
   const [botStatus, setBotStatus] = useState<any>(null);
   const [trades, setTrades] = useState<any[]>([]);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
@@ -74,7 +74,7 @@ export default function Home() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        walletAddress: 'user-wallet-address' // Replace with actual connected wallet
+        walletAddress: publicKey?.toBase58() // Use actual connected wallet
       })
     })
     .then(res => res.json())
@@ -102,15 +102,37 @@ export default function Home() {
 
   // Function to get bot wallet address
   const fetchBotWalletAddress = async () => {
+    if (!connected || !publicKey) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
     try {
-      const response = await fetch(`${BACKEND_URL}/api/bot/wallet-address`);
+      const response = await fetch(`${BACKEND_URL}/api/bot/generate-wallet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userWalletAddress: publicKey.toBase58()
+        })
+      });
+
       const data = await response.json();
-      
-      if (data.botWalletAddress) {
+
+      if (data.success) {
         setBotWalletAddress(data.botWalletAddress);
+        setBotBalance(data.botBalance);
+        alert(`Bot wallet generated!\nAddress: ${data.botWalletAddress}\nBalance: ${data.botBalance} SOL`);
+      } else {
+        setError(data.error || 'Failed to generate bot wallet');
       }
-    } catch (err) {
-      console.error('Failed to get bot wallet address:', err);
+    } catch (err: any) {
+      setError('Failed to generate bot wallet');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 

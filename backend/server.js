@@ -76,6 +76,41 @@ app.get('/api/wallet/balance/:walletAddress', async (req, res) => {
   }
 });
 
+// Generate unique bot wallet for user
+app.post('/api/bot/generate-wallet', async (req, res) => {
+  const { userWalletAddress } = req.body;
+  
+  if (!userWalletAddress) {
+    return res.status(400).json({ error: 'Missing user wallet address' });
+  }
+
+  try {
+    // Validate user wallet address
+    new PublicKey(userWalletAddress);
+    
+    // Create UNIQUE bot wallet keypair based on user's wallet address
+    const userSeed = userWalletAddress.slice(0, 32); // Use first 32 chars as seed
+    const botKeypair = Keypair.fromSeed(new Uint8Array(userSeed.split('').map(c => c.charCodeAt(0))));
+    
+    // Get initial bot wallet balance (should be 0)
+    const botBalance = await connection.getBalance(botKeypair.publicKey);
+    
+    console.log(`Generated unique bot wallet for user ${userWalletAddress}: ${botKeypair.publicKey.toBase58()}`);
+    
+    res.json({
+      success: true,
+      botWalletAddress: botKeypair.publicKey.toBase58(),
+      userWalletAddress: userWalletAddress,
+      botBalance: botBalance / LAMPORTS_PER_SOL,
+      message: 'Unique bot wallet generated successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error generating bot wallet:', error);
+    res.status(400).json({ error: 'Invalid user wallet address' });
+  }
+});
+
 // Start bot endpoint with hard-coded meme strategy
 app.post('/api/bot/start', async (req, res) => {
   const { walletAddress } = req.body;
@@ -88,12 +123,20 @@ app.post('/api/bot/start', async (req, res) => {
     // Validate wallet address
     new PublicKey(walletAddress);
     
-    // Get current balance
-    const balance = await connection.getBalance(new PublicKey(walletAddress));
-    
-    // Create UNIQUE wallet keypair per user (based on their wallet address)
-    const userSeed = walletAddress.slice(0, 32); // Use first 32 chars as seed
+    // Create the SAME bot wallet keypair (deterministic)
+    const userSeed = walletAddress.slice(0, 32);
     const walletKeypair = Keypair.fromSeed(new Uint8Array(userSeed.split('').map(c => c.charCodeAt(0))));
+    
+    // Get current bot wallet balance
+    const botBalance = await connection.getBalance(walletKeypair.publicKey);
+    
+    if (botBalance < 0.001 * LAMPORTS_PER_SOL) {
+      return res.status(400).json({ 
+        error: 'Bot wallet needs at least 0.001 SOL to start trading',
+        botWalletAddress: walletKeypair.publicKey.toBase58(),
+        currentBalance: botBalance / LAMPORTS_PER_SOL
+      });
+    }
     
     // Initialize trading bot with hard-coded meme strategy
     tradingBot = new SolanaTradingBot({
@@ -118,7 +161,7 @@ app.post('/api/bot/start', async (req, res) => {
       strategy: 'meme_scalp_momo_v2_autotuned',
       walletAddress,
       trades: tradingBot.trades,
-      balance: balance / LAMPORTS_PER_SOL,
+      balance: botBalance / LAMPORTS_PER_SOL,
       aiStrategy: null
     };
 
