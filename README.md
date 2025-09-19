@@ -87,4 +87,4 @@ If you encounter any issues:
 1. Check the deployment logs in Vercel/Railway
 2. Ensure environment variables are set correctly
 3. Verify both services are running and accessible
-4. Make sure Railway is configured with `/backend` as root directory
+4. Make sure Railway is configured with `/backend` as root directory# Force deployment Thu Sep 18 20:42:41 PDT 2025
