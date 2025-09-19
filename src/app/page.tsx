@@ -5,6 +5,7 @@ import { WalletProvider } from '@/components/WalletProvider';
 import { WalletButton } from '@/components/WalletButton';
 import { BotControls } from '@/components/BotControls';
 import { TradeHistory } from '@/components/TradeHistory';
+import { PerformanceChart } from '@/components/PerformanceChart';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -327,6 +328,11 @@ export default function Home() {
               {isCashingOut ? 'Cashing Out...' : 'Cash Out Bot'}
             </button>
           </div>
+        </div>
+
+        <div className="card">
+          <h2 className="font-bold mb-4">Performance Chart</h2>
+          <PerformanceChart trades={trades} />
         </div>
 
         <div className="card">
