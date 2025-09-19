@@ -3,6 +3,8 @@ const cors = require('cors');
 const { Connection, PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const axios = require('axios');
 const OpenAI = require('openai');
+const SolanaTradingBot = require('./trading-engine');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -15,7 +17,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// In-memory storage for demo (in production, use a database)
+// Initialize trading bot
+let tradingBot = null;
 let botState = {
   isRunning: false,
   strategy: null,
@@ -40,14 +43,24 @@ app.get('/health', (req, res) => {
 
 // Bot status endpoint
 app.get('/api/bot/status', (req, res) => {
+  const botStatus = tradingBot ? tradingBot.getStatus() : {
+    isRunning: false,
+    balance: 0,
+    trades: [],
+    positions: [],
+    priceFeeds: {}
+  };
+
   res.json({
-    status: botState.isRunning ? 'running' : 'ready',
+    status: botStatus.isRunning ? 'running' : 'ready',
     strategies: ['momentum', 'market_making', 'dip_buy', 'ai_generated'],
     currentStrategy: botState.strategy,
     walletAddress: botState.walletAddress,
-    balance: botState.balance,
-    tradesCount: botState.trades.length,
+    balance: botStatus.balance,
+    tradesCount: botStatus.trades.length,
     aiStrategy: botState.aiStrategy,
+    positions: botStatus.positions,
+    priceFeeds: botStatus.priceFeeds,
     timestamp: new Date().toISOString()
   });
 });
@@ -70,9 +83,9 @@ app.get('/api/wallet/balance/:walletAddress', async (req, res) => {
   }
 });
 
-// Start bot endpoint with enhanced trading logic
+// Start bot endpoint with real trading engine
 app.post('/api/bot/start', async (req, res) => {
-  const { strategy, walletAddress } = req.body;
+  const { strategy, walletAddress, strategyDetails } = req.body;
   
   if (!strategy || !walletAddress) {
     return res.status(400).json({ error: 'Missing strategy or wallet address' });
@@ -85,55 +98,85 @@ app.post('/api/bot/start', async (req, res) => {
     // Get current balance
     const balance = await connection.getBalance(new PublicKey(walletAddress));
     
+    // Create wallet keypair (in production, you'd load from secure storage)
+    const walletKeypair = Keypair.generate(); // Demo - replace with actual wallet
+    
+    // Initialize trading bot with real engine
+    tradingBot = new SolanaTradingBot({
+      rpcUrl: process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+      walletKeypair,
+      strategy: strategyDetails || strategy,
+      maxPositionSize: 0.1, // 10% max position
+      stopLossPercent: 0.05, // 5% stop loss
+      takeProfitPercent: 0.1 // 10% take profit
+    });
+
+    // Initialize the bot
+    const initialized = await tradingBot.initialize();
+    
+    if (!initialized) {
+      throw new Error('Failed to initialize trading bot');
+    }
+
     // Update bot state
     botState = {
       isRunning: true,
       strategy,
       walletAddress,
-      trades: botState.trades,
-      balance: balance / LAMPORTS_PER_SOL
+      trades: tradingBot.trades,
+      balance: balance / LAMPORTS_PER_SOL,
+      aiStrategy: strategyDetails
     };
 
-    console.log(`Bot started with ${strategy} strategy for wallet ${walletAddress}`);
-    
-    // Start trading simulation (in production, this would be real trading logic)
-    startTradingSimulation(strategy, walletAddress);
+    console.log(`Real trading bot started with ${strategy} strategy for wallet ${walletAddress}`);
     
     res.json({
       success: true,
-      message: `Bot started with ${strategy} strategy for wallet ${walletAddress}`,
+      message: `Real trading bot started with ${strategy} strategy for wallet ${walletAddress}`,
       balance: botState.balance,
+      aiStrategy: botState.aiStrategy,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    res.status(400).json({ error: 'Invalid wallet address' });
+    console.error('Error starting trading bot:', error);
+    res.status(400).json({ error: 'Invalid wallet address or bot initialization failed' });
   }
 });
 
 // Stop bot endpoint
-app.post('/api/bot/stop', (req, res) => {
-  botState.isRunning = false;
-  botState.strategy = null;
-  console.log('Bot stopped');
-  
-  res.json({
-    success: true,
-    message: 'Bot stopped',
-    timestamp: new Date().toISOString()
-  });
+app.post('/api/bot/stop', async (req, res) => {
+  try {
+    if (tradingBot) {
+      await tradingBot.stop();
+      tradingBot = null;
+    }
+    
+    botState.isRunning = false;
+    botState.strategy = null;
+    console.log('Real trading bot stopped');
+    
+    res.json({
+      success: true,
+      message: 'Real trading bot stopped',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error stopping bot:', error);
+    res.status(500).json({ error: 'Failed to stop bot' });
+  }
 });
 
-// Get trades endpoint with enhanced data
+// Get trades endpoint with real trading data
 app.get('/api/trades/:walletAddress', (req, res) => {
   const { walletAddress } = req.params;
   
-  const walletTrades = botState.trades.filter(trade => trade.walletAddress === walletAddress);
-  const totalPnL = walletTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+  const trades = tradingBot ? tradingBot.trades : [];
+  const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
   
   res.json({
-    trades: walletTrades,
+    trades: trades,
     totalPnL,
-    tradeCount: walletTrades.length,
+    tradeCount: trades.length,
     timestamp: new Date().toISOString()
   });
 });
@@ -219,51 +262,7 @@ Keep it concise and practical for automated trading on Solana.`
   }
 });
 
-// Trading simulation function
-function startTradingSimulation(strategy, walletAddress) {
-  if (!botState.isRunning) return;
-
-  const simulateTrade = () => {
-    if (!botState.isRunning) return;
-
-    // Generate mock trade data
-    const pairs = ['SOL/USDC', 'SOL/USDT', 'RAY/SOL'];
-    const sides = ['buy', 'sell'];
-    const pair = pairs[Math.floor(Math.random() * pairs.length)];
-    const side = sides[Math.floor(Math.random() * sides.length)];
-    const amount = Math.random() * 0.1 + 0.01; // 0.01 to 0.11 SOL
-    const price = 100 + Math.random() * 50; // $100-$150
-    const pnl = (Math.random() - 0.5) * 0.02; // -0.01 to +0.01 SOL
-
-    const trade = {
-      id: Date.now().toString(),
-      pair,
-      side,
-      amount: parseFloat(amount.toFixed(4)),
-      price: parseFloat(price.toFixed(2)),
-      pnl: parseFloat(pnl.toFixed(4)),
-      walletAddress,
-      strategy,
-      timestamp: new Date().toISOString()
-    };
-
-    botState.trades.push(trade);
-    
-    // Update balance
-    botState.balance += pnl;
-
-    console.log(`Trade executed: ${side} ${amount} ${pair} at $${price} (P&L: ${pnl})`);
-
-    // Schedule next trade
-    const nextTradeDelay = strategy === 'momentum' ? 5000 : 
-                          strategy === 'market_making' ? 3000 : 8000;
-    
-    setTimeout(simulateTrade, nextTradeDelay);
-  };
-
-  // Start first trade after a short delay
-  setTimeout(simulateTrade, 2000);
-}
+// Real trading bot is now handled by SolanaTradingBot class
 
 // Error handling middleware
 app.use((err, req, res, next) => {
