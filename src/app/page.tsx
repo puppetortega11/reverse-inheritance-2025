@@ -82,10 +82,10 @@ export default function Home() {
   // Function to use hard-coded meme strategy
   const useMemeStrategy = () => {
     const memeStrategy = `meme_scalp_momo_v2_autotuned - Advanced meme token scalping strategy with:
-- Capital base: 20 SOL
+- Capital base: 0.1 SOL (minimum)
 - Max positions: 3
 - Risk per trade: 0.4%
-- Position size: 0.20-1.00 SOL
+- Position size: 0.01-0.05 SOL
 - Daily max drawdown: 2.5%
 - Take profit ladder: 0.5%, 1%, 1.8%, 4%
 - Stop loss: 1% ATR-based

@@ -121,11 +121,11 @@ class SolanaTradingBot {
     if (strategyText.includes('meme_scalp_momo_v2_autotuned') || strategyText.includes('meme')) {
       return {
         strategyName: 'meme_scalp_momo_v2_autotuned',
-        capitalBase: 20.0, // SOL
+        capitalBase: 0.1, // SOL (minimum)
         maxPositions: 3,
         riskPerTrade: 0.004, // 0.4%
-        positionSizeMin: 0.20, // SOL
-        positionSizeMax: 1.00, // SOL
+        positionSizeMin: 0.01, // SOL (scaled down for smaller capital)
+        positionSizeMax: 0.05, // SOL (scaled down for smaller capital)
         dailyMaxDrawdown: 0.025, // 2.5%
         dailyProfitLock: 0.018, // 1.8%
         entryCondition: 'momentum_trigger',
