@@ -209,6 +209,88 @@ app.post('/api/wallet/send', async (req, res) => {
   }
 });
 
+// Send SOL to bot wallet endpoint
+app.post('/api/wallet/send-to-bot', async (req, res) => {
+  const { fromWallet, amount, botWalletAddress } = req.body;
+  
+  if (!fromWallet || !amount || !botWalletAddress) {
+    return res.status(400).json({ error: 'Missing required fields: fromWallet, amount, botWalletAddress' });
+  }
+
+  try {
+    // Validate wallet addresses
+    new PublicKey(fromWallet);
+    new PublicKey(botWalletAddress);
+    
+    // Validate amount
+    const solAmount = parseFloat(amount);
+    if (solAmount <= 0 || solAmount > 100) {
+      return res.status(400).json({ error: 'Amount must be between 0 and 100 SOL' });
+    }
+
+    // Check sender balance
+    const senderBalance = await connection.getBalance(new PublicKey(fromWallet));
+    const senderBalanceSOL = senderBalance / LAMPORTS_PER_SOL;
+    
+    if (senderBalanceSOL < solAmount) {
+      return res.status(400).json({ 
+        error: 'Insufficient balance', 
+        currentBalance: senderBalanceSOL,
+        requestedAmount: solAmount 
+      });
+    }
+
+    // Create transaction
+    const transaction = new Transaction();
+    
+    // Add transfer instruction
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: new PublicKey(fromWallet),
+        toPubkey: new PublicKey(botWalletAddress),
+        lamports: Math.floor(solAmount * LAMPORTS_PER_SOL)
+      })
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(fromWallet);
+
+    console.log(`Transfer initiated: ${solAmount} SOL from ${fromWallet} to bot wallet ${botWalletAddress}`);
+    
+    res.json({
+      success: true,
+      message: `Transfer initiated: ${solAmount} SOL to bot wallet`,
+      transaction: {
+        fromWallet,
+        toWallet: botWalletAddress,
+        amount: solAmount,
+        lamports: Math.floor(solAmount * LAMPORTS_PER_SOL)
+      },
+      // Note: In production, you'd need to sign and send this transaction
+      // For now, we're just preparing it
+      instructions: 'Transaction prepared. Sign and send using your wallet.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error creating transfer:', error);
+    res.status(400).json({ error: 'Invalid wallet addresses or amount' });
+  }
+});
+
+// Get bot wallet address endpoint
+app.get('/api/bot/wallet-address', (req, res) => {
+  if (!tradingBot || !tradingBot.walletKeypair) {
+    return res.status(400).json({ error: 'Bot not initialized' });
+  }
+
+  res.json({
+    botWalletAddress: tradingBot.walletKeypair.publicKey.toBase58(),
+    timestamp: new Date().toISOString()
+  });
+});
+
 // OpenAI Strategy Generation endpoint
 app.post('/api/strategy/generate', async (req, res) => {
   const { prompt } = req.body;

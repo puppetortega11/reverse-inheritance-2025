@@ -117,7 +117,38 @@ class SolanaTradingBot {
   }
 
   parseStrategy(strategyText) {
-    // Parse AI-generated strategy into trading parameters
+    // Hard-coded meme scalp strategy based on user's specification
+    if (strategyText.includes('meme_scalp_momo_v2_autotuned') || strategyText.includes('meme')) {
+      return {
+        strategyName: 'meme_scalp_momo_v2_autotuned',
+        capitalBase: 20.0, // SOL
+        maxPositions: 3,
+        riskPerTrade: 0.004, // 0.4%
+        positionSizeMin: 0.20, // SOL
+        positionSizeMax: 1.00, // SOL
+        dailyMaxDrawdown: 0.025, // 2.5%
+        dailyProfitLock: 0.018, // 1.8%
+        entryCondition: 'momentum_trigger',
+        exitCondition: 'trailing_stop',
+        stopLoss: 0.01, // 1% ATR-based
+        takeProfit: [
+          { trigger: 0.005, size: 0.35 }, // 0.5% profit, sell 35%
+          { trigger: 0.01, size: 0.35 },  // 1% profit, sell 35%
+          { trigger: 0.018, size: 0.20 }, // 1.8% profit, sell 20%
+          { trigger: 0.04, size: 0.10 }   // 4% profit, sell 10% (runner)
+        ],
+        positionSize: 0.1,
+        maxSlippage: 0.006, // 0.6%
+        minLiquidity: 40000, // USD
+        minVolume: 75000, // USD
+        minHolders: 500,
+        tokenAgeHours: 8,
+        reentryCooldown: 20, // minutes
+        maxTradesPerHour: 2
+      };
+    }
+
+    // Fallback for other strategies
     const params = {
       entryCondition: 'rsi_below_30',
       exitCondition: 'rsi_above_70',

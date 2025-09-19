@@ -17,6 +17,9 @@ export default function Home() {
   const [strategyPrompt, setStrategyPrompt] = useState<string>('');
   const [generatedStrategy, setGeneratedStrategy] = useState<string | null>(null);
   const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
+  const [botWalletAddress, setBotWalletAddress] = useState<string | null>(null);
+  const [transferAmount, setTransferAmount] = useState<string>('');
+  const [isTransferring, setIsTransferring] = useState(false);
 
   const fetchBotStatus = async () => {
     try {
@@ -76,8 +79,75 @@ export default function Home() {
     }
   };
 
+  // Function to use hard-coded meme strategy
+  const useMemeStrategy = () => {
+    const memeStrategy = `meme_scalp_momo_v2_autotuned - Advanced meme token scalping strategy with:
+- Capital base: 20 SOL
+- Max positions: 3
+- Risk per trade: 0.4%
+- Position size: 0.20-1.00 SOL
+- Daily max drawdown: 2.5%
+- Take profit ladder: 0.5%, 1%, 1.8%, 4%
+- Stop loss: 1% ATR-based
+- Min liquidity: $40k, Min volume: $75k
+- Reentry cooldown: 20 minutes`;
+
+    setGeneratedStrategy(memeStrategy);
+    setStrategyPrompt('meme_scalp_momo_v2_autotuned');
+  };
+
+  // Function to get bot wallet address
+  const fetchBotWalletAddress = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/bot/wallet-address`);
+      const data = await response.json();
+      
+      if (data.botWalletAddress) {
+        setBotWalletAddress(data.botWalletAddress);
+      }
+    } catch (err) {
+      console.error('Failed to get bot wallet address:', err);
+    }
+  };
+
+  // Function to transfer money to bot
+  const transferToBot = async () => {
+    if (!transferAmount || !botWalletAddress) return;
+
+    setIsTransferring(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/wallet/send-to-bot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromWallet: 'user-wallet-address', // Replace with actual connected wallet
+          amount: parseFloat(transferAmount),
+          botWalletAddress: botWalletAddress
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Transfer prepared: ${transferAmount} SOL to bot wallet`);
+        setTransferAmount('');
+        fetchWalletBalance('user-wallet-address'); // Refresh balance
+      } else {
+        throw new Error(data.error || 'Failed to transfer');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to transfer');
+      console.error(err);
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
   useEffect(() => {
     fetchBotStatus();
+    fetchBotWalletAddress();
   }, []);
 
   return (
