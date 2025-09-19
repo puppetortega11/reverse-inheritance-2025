@@ -73,12 +73,11 @@ app.get('/api/bot/status', (req, res) => {
 
   res.json({
     status: botStatus.isRunning ? 'running' : 'ready',
-    strategies: ['momentum', 'market_making', 'dip_buy', 'ai_generated'],
+    strategies: ['meme_scalp_momo_v2_autotuned'],
     currentStrategy: mockBotState.strategy,
     walletAddress: mockBotState.walletAddress,
     balance: botStatus.balance,
     tradesCount: botStatus.trades.length,
-    aiStrategy: mockBotState.aiStrategy,
     positions: botStatus.positions,
     priceFeeds: botStatus.priceFeeds,
     timestamp: new Date().toISOString()
@@ -86,10 +85,10 @@ app.get('/api/bot/status', (req, res) => {
 });
 
 app.post('/api/bot/start', async (req, res) => {
-  const { strategy, walletAddress, strategyDetails } = req.body;
+  const { walletAddress } = req.body;
   
-  if (!strategy || !walletAddress) {
-    return res.status(400).json({ error: 'Missing strategy or wallet address' });
+  if (!walletAddress) {
+    return res.status(400).json({ error: 'Missing wallet address' });
   }
 
   try {
@@ -102,7 +101,7 @@ app.post('/api/bot/start', async (req, res) => {
     mockTradingBot = new MockTradingBot({
       rpcUrl: 'https://api.devnet.solana.com',
       walletKeypair: Keypair.generate(),
-      strategy: strategyDetails || strategy,
+      strategy: 'meme_scalp_momo_v2_autotuned',
       maxPositionSize: 0.1,
       stopLossPercent: 0.05,
       takeProfitPercent: 0.1
@@ -118,18 +117,18 @@ app.post('/api/bot/start', async (req, res) => {
     // Update bot state
     mockBotState = {
       isRunning: true,
-      strategy,
+      strategy: 'meme_scalp_momo_v2_autotuned',
       walletAddress,
       trades: mockTradingBot.trades,
       balance: mockTradingBot.balance,
-      aiStrategy: strategyDetails
+      aiStrategy: null
     };
 
     res.json({
       success: true,
-      message: `Real trading bot started with ${strategy} strategy for wallet ${walletAddress}`,
+      message: `Meme trading bot started for wallet ${walletAddress}`,
       balance: mockBotState.balance,
-      aiStrategy: mockBotState.aiStrategy,
+      strategy: 'meme_scalp_momo_v2_autotuned',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -357,15 +356,14 @@ test('Complete Workflow: Start Bot', async () => {
   const response = await request(app)
     .post('/api/bot/start')
     .send({ 
-      strategy: 'meme_scalp_momo_v2_autotuned', 
-      walletAddress: '11111111111111111111111111111112',
-      strategyDetails: 'Test meme strategy'
+      walletAddress: '11111111111111111111111111111112'
     });
     
   if (response.statusCode !== 200) throw new Error(`Expected 200, got ${response.statusCode}`);
   if (!response.body.success) throw new Error('Expected success: true');
   if (!mockTradingBot) throw new Error('Trading bot should be initialized');
   if (!mockTradingBot.isRunning) throw new Error('Trading bot should be running');
+  if (response.body.strategy !== 'meme_scalp_momo_v2_autotuned') throw new Error('Strategy should be meme_scalp_momo_v2_autotuned');
 });
 
 test('Complete Workflow: Get Bot Wallet Address', async () => {
@@ -531,7 +529,6 @@ test('Complete Workflow: Full Cycle Test', async () => {
   await request(app)
     .post('/api/bot/start')
     .send({ 
-      strategy: 'meme_scalp_momo_v2_autotuned', 
       walletAddress: '11111111111111111111111111111112'
     });
   

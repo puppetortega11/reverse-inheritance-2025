@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const { Connection, PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const axios = require('axios');
-const OpenAI = require('openai');
 const SolanaTradingBot = require('./trading-engine');
 require('dotenv').config();
 
@@ -11,11 +10,6 @@ const PORT = process.env.PORT || 8000;
 
 // Initialize Solana connection
 const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com');
-
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
 
 // Initialize trading bot
 let tradingBot = null;
@@ -53,12 +47,11 @@ app.get('/api/bot/status', (req, res) => {
 
   res.json({
     status: botStatus.isRunning ? 'running' : 'ready',
-    strategies: ['momentum', 'market_making', 'dip_buy', 'ai_generated'],
+    strategies: ['meme_scalp_momo_v2_autotuned'],
     currentStrategy: botState.strategy,
     walletAddress: botState.walletAddress,
     balance: botStatus.balance,
     tradesCount: botStatus.trades.length,
-    aiStrategy: botState.aiStrategy,
     positions: botStatus.positions,
     priceFeeds: botStatus.priceFeeds,
     timestamp: new Date().toISOString()
@@ -83,12 +76,12 @@ app.get('/api/wallet/balance/:walletAddress', async (req, res) => {
   }
 });
 
-// Start bot endpoint with real trading engine
+// Start bot endpoint with hard-coded meme strategy
 app.post('/api/bot/start', async (req, res) => {
-  const { strategy, walletAddress, strategyDetails } = req.body;
+  const { walletAddress } = req.body;
   
-  if (!strategy || !walletAddress) {
-    return res.status(400).json({ error: 'Missing strategy or wallet address' });
+  if (!walletAddress) {
+    return res.status(400).json({ error: 'Missing wallet address' });
   }
 
   try {
@@ -101,11 +94,11 @@ app.post('/api/bot/start', async (req, res) => {
     // Create wallet keypair (in production, you'd load from secure storage)
     const walletKeypair = Keypair.generate(); // Demo - replace with actual wallet
     
-    // Initialize trading bot with real engine
+    // Initialize trading bot with hard-coded meme strategy
     tradingBot = new SolanaTradingBot({
       rpcUrl: process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
       walletKeypair,
-      strategy: strategyDetails || strategy,
+      strategy: 'meme_scalp_momo_v2_autotuned', // Hard-coded strategy
       maxPositionSize: 0.1, // 10% max position
       stopLossPercent: 0.05, // 5% stop loss
       takeProfitPercent: 0.1 // 10% take profit
@@ -121,20 +114,20 @@ app.post('/api/bot/start', async (req, res) => {
     // Update bot state
     botState = {
       isRunning: true,
-      strategy,
+      strategy: 'meme_scalp_momo_v2_autotuned',
       walletAddress,
       trades: tradingBot.trades,
       balance: balance / LAMPORTS_PER_SOL,
-      aiStrategy: strategyDetails
+      aiStrategy: null
     };
 
-    console.log(`Real trading bot started with ${strategy} strategy for wallet ${walletAddress}`);
+    console.log(`Meme trading bot started for wallet ${walletAddress}`);
     
     res.json({
       success: true,
-      message: `Real trading bot started with ${strategy} strategy for wallet ${walletAddress}`,
+      message: `Meme trading bot started for wallet ${walletAddress}`,
       balance: botState.balance,
-      aiStrategy: botState.aiStrategy,
+      strategy: 'meme_scalp_momo_v2_autotuned',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -383,58 +376,8 @@ app.get('/api/bot/balance', async (req, res) => {
   }
 });
 
-// OpenAI Strategy Generation endpoint
-app.post('/api/strategy/generate', async (req, res) => {
-  const { prompt } = req.body;
-  
-  if (!prompt || !prompt.trim()) {
-    return res.status(400).json({ error: 'Prompt is required' });
-  }
-
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are a Solana trading bot strategy generator. Convert natural language trading instructions into a structured trading strategy. 
-
-Respond with a clear, actionable trading strategy that includes:
-1. Entry conditions (when to buy)
-2. Exit conditions (when to sell) 
-3. Risk management (stop loss, take profit)
-4. Position sizing
-5. Trading pairs to focus on
-
-Keep it concise and practical for automated trading on Solana.`
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 500,
-      temperature: 0.7
-    });
-
-    const strategy = completion.choices[0].message.content;
-    
-    // Store the AI strategy
-    botState.aiStrategy = strategy;
-
-    res.json({
-      success: true,
-      strategy: strategy,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('OpenAI API error:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate strategy',
-      details: error.message 
-    });
-  }
-});
+// Strategy is now hard-coded in the trading engine
+// No AI generation needed - simpler and more reliable
 
 // Real trading bot is now handled by SolanaTradingBot class
 
