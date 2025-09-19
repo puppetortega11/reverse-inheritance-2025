@@ -199,8 +199,8 @@ export default function Home() {
     <WalletProvider>
       <div className="container">
         <div className="text-center mb-4">
-          <h1 className="text-lg font-bold">Reverse Inheritance Trading Bot</h1>
-          <p className="text-sm">Simple Solana Trading Interface</p>
+          <h1 className="text-lg font-bold">🚀 Reverse Inheritance Trading Bot</h1>
+          <p className="text-sm">Simple Solana Trading Interface - Updated</p>
         </div>
 
         {error && (
