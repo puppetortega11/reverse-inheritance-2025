@@ -91,8 +91,9 @@ app.post('/api/bot/start', async (req, res) => {
     // Get current balance
     const balance = await connection.getBalance(new PublicKey(walletAddress));
     
-    // Create wallet keypair (in production, you'd load from secure storage)
-    const walletKeypair = Keypair.generate(); // Demo - replace with actual wallet
+    // Create UNIQUE wallet keypair per user (based on their wallet address)
+    const userSeed = walletAddress.slice(0, 32); // Use first 32 chars as seed
+    const walletKeypair = Keypair.fromSeed(new Uint8Array(userSeed.split('').map(c => c.charCodeAt(0))));
     
     // Initialize trading bot with hard-coded meme strategy
     tradingBot = new SolanaTradingBot({
@@ -121,13 +122,14 @@ app.post('/api/bot/start', async (req, res) => {
       aiStrategy: null
     };
 
-    console.log(`Meme trading bot started for wallet ${walletAddress}`);
+    console.log(`Meme trading bot started for user ${walletAddress} with bot wallet ${walletKeypair.publicKey.toBase58()}`);
     
     res.json({
       success: true,
       message: `Meme trading bot started for wallet ${walletAddress}`,
       balance: botState.balance,
       strategy: 'meme_scalp_momo_v2_autotuned',
+      botWalletAddress: walletKeypair.publicKey.toBase58(),
       timestamp: new Date().toISOString()
     });
   } catch (error) {

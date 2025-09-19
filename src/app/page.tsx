@@ -80,8 +80,13 @@ export default function Home() {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
+        // Set the bot wallet address from the response
+        if (data.botWalletAddress) {
+          setBotWalletAddress(data.botWalletAddress);
+        }
         fetchBotStatus();
-        alert('Meme trading bot started successfully!');
+        fetchBotBalance(); // Refresh bot balance
+        alert(`Meme trading bot started successfully!\nBot Wallet: ${data.botWalletAddress}`);
       } else {
         setError(data.error || 'Failed to start bot');
       }
@@ -283,42 +288,58 @@ export default function Home() {
         <div className="card">
           <h2 className="font-bold mb-4">💰 Fund Bot Wallet</h2>
           <div className="space-y-4">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="font-semibold text-blue-800 mb-2">Step 1: Get Bot Wallet Address</h3>
+              <p className="text-blue-700 text-sm mb-3">
+                Click below to generate your personal bot wallet address. Each user gets their own unique bot wallet.
+              </p>
+              <button
+                onClick={fetchBotWalletAddress}
+                disabled={loading}
+                className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                {loading ? 'Getting Address...' : 'Get Bot Wallet Address'}
+              </button>
+            </div>
+            
             {botWalletAddress && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="text-sm text-blue-600 mb-1">Bot Wallet Address:</div>
-                <div className="font-mono text-sm break-all">{botWalletAddress}</div>
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h3 className="font-semibold text-green-800 mb-2">Step 2: Copy Bot Address</h3>
+                <div className="mb-3">
+                  <div className="text-sm text-green-600 mb-1">Your Bot Wallet Address:</div>
+                  <div className="font-mono text-sm break-all bg-white p-2 rounded border">
+                    {botWalletAddress}
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigator.clipboard.writeText(botWalletAddress)}
+                  className="bg-green-600 text-white py-1 px-3 rounded text-sm hover:bg-green-700"
+                >
+                  📋 Copy Address
+                </button>
               </div>
             )}
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amount to send (SOL):
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                max="100"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., 1.5"
-                value={transferAmount}
-                onChange={(e) => setTransferAmount(e.target.value)}
-                disabled={isTransferring || !connected || !botWalletAddress}
-              />
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h3 className="font-semibold text-yellow-800 mb-2">Step 3: Send SOL from Your Wallet</h3>
+              <p className="text-yellow-700 text-sm mb-3">
+                Use your Phantom/Solflare wallet to send SOL to the bot address above. 
+                Minimum: 0.1 SOL (for trading), Recommended: 1-5 SOL
+              </p>
+              <div className="text-sm text-yellow-600">
+                💡 <strong>Tip:</strong> Send SOL directly from your wallet app, not through this interface
+              </div>
             </div>
             
-            <button
-              onClick={transferToBot}
-              disabled={!transferAmount || parseFloat(transferAmount) <= 0 || isTransferring || !connected || !botWalletAddress}
-              className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {isTransferring ? 'Sending SOL...' : 'Send SOL to Bot'}
-            </button>
-            
             {botBalance !== null && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="text-sm text-green-600 mb-1">Current Bot Balance:</div>
-                <div className="text-lg font-bold text-green-700">{botBalance.toFixed(4)} SOL</div>
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <h3 className="font-semibold text-purple-800 mb-2">Bot Balance Status</h3>
+                <div className="text-lg font-bold text-purple-700 mb-2">
+                  {botBalance.toFixed(4)} SOL
+                </div>
+                <div className="text-sm text-purple-600">
+                  {botBalance >= 0.1 ? '✅ Ready for trading!' : '⚠️ Need at least 0.1 SOL to start trading'}
+                </div>
               </div>
             )}
           </div>
