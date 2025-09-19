@@ -291,6 +291,98 @@ app.get('/api/bot/wallet-address', (req, res) => {
   });
 });
 
+// Cash out endpoint - send all bot funds back to user wallet
+app.post('/api/bot/cash-out', async (req, res) => {
+  const { userWalletAddress } = req.body;
+  
+  if (!userWalletAddress) {
+    return res.status(400).json({ error: 'User wallet address is required' });
+  }
+
+  if (!tradingBot || !tradingBot.walletKeypair) {
+    return res.status(400).json({ error: 'Bot not initialized' });
+  }
+
+  try {
+    // Validate user wallet address
+    new PublicKey(userWalletAddress);
+    
+    // Get current bot balance
+    const botBalance = await connection.getBalance(tradingBot.walletKeypair.publicKey);
+    const botBalanceSOL = botBalance / LAMPORTS_PER_SOL;
+    
+    if (botBalanceSOL < 0.001) { // Minimum 0.001 SOL to cover transaction fees
+      return res.status(400).json({ 
+        error: 'Insufficient balance for cash out', 
+        currentBalance: botBalanceSOL,
+        minimumRequired: 0.001 
+      });
+    }
+
+    // Calculate amount to send (leave small amount for fees)
+    const amountToSend = botBalanceSOL - 0.001; // Keep 0.001 SOL for fees
+    const lamportsToSend = Math.floor(amountToSend * LAMPORTS_PER_SOL);
+
+    // Create transaction
+    const transaction = new Transaction();
+    
+    // Add transfer instruction
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: tradingBot.walletKeypair.publicKey,
+        toPubkey: new PublicKey(userWalletAddress),
+        lamports: lamportsToSend
+      })
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = tradingBot.walletKeypair.publicKey;
+
+    console.log(`Cash out initiated: ${amountToSend} SOL from bot to user wallet ${userWalletAddress}`);
+    
+    res.json({
+      success: true,
+      message: `Cash out prepared: ${amountToSend} SOL to user wallet`,
+      transaction: {
+        fromWallet: tradingBot.walletKeypair.publicKey.toBase58(),
+        toWallet: userWalletAddress,
+        amount: amountToSend,
+        lamports: lamportsToSend,
+        remainingBalance: 0.001 // Amount left for fees
+      },
+      instructions: 'Transaction prepared. Sign and send using bot wallet.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error creating cash out transaction:', error);
+    res.status(400).json({ error: 'Invalid wallet address or transaction failed' });
+  }
+});
+
+// Get bot balance endpoint
+app.get('/api/bot/balance', async (req, res) => {
+  if (!tradingBot || !tradingBot.walletKeypair) {
+    return res.status(400).json({ error: 'Bot not initialized' });
+  }
+
+  try {
+    const balance = await connection.getBalance(tradingBot.walletKeypair.publicKey);
+    const balanceSOL = balance / LAMPORTS_PER_SOL;
+    
+    res.json({
+      botWalletAddress: tradingBot.walletKeypair.publicKey.toBase58(),
+      balance: balanceSOL,
+      balanceLamports: balance,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error getting bot balance:', error);
+    res.status(500).json({ error: 'Failed to get bot balance' });
+  }
+});
+
 // OpenAI Strategy Generation endpoint
 app.post('/api/strategy/generate', async (req, res) => {
   const { prompt } = req.body;

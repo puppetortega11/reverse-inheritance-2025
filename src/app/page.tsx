@@ -20,6 +20,8 @@ export default function Home() {
   const [botWalletAddress, setBotWalletAddress] = useState<string | null>(null);
   const [transferAmount, setTransferAmount] = useState<string>('');
   const [isTransferring, setIsTransferring] = useState(false);
+  const [botBalance, setBotBalance] = useState<number | null>(null);
+  const [isCashingOut, setIsCashingOut] = useState(false);
 
   const fetchBotStatus = async () => {
     try {
@@ -110,6 +112,53 @@ export default function Home() {
     }
   };
 
+  // Function to get bot balance
+  const fetchBotBalance = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/bot/balance`);
+      const data = await response.json();
+      
+      if (data.balance !== undefined) {
+        setBotBalance(data.balance);
+      }
+    } catch (err) {
+      console.error('Failed to get bot balance:', err);
+    }
+  };
+
+  // Function to cash out bot funds
+  const cashOutBot = async () => {
+    if (!botWalletAddress) return;
+
+    setIsCashingOut(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/bot/cash-out`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userWalletAddress: 'user-wallet-address' // Replace with actual connected wallet
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Cash out prepared: ${data.transaction.amount} SOL returned to your wallet`);
+        fetchBotBalance(); // Refresh bot balance
+        fetchWalletBalance('user-wallet-address'); // Refresh user balance
+      } else {
+        throw new Error(data.error || 'Failed to cash out');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to cash out');
+      console.error(err);
+    } finally {
+      setIsCashingOut(false);
+    }
+  };
+
   // Function to transfer money to bot
   const transferToBot = async () => {
     if (!transferAmount || !botWalletAddress) return;
@@ -148,6 +197,7 @@ export default function Home() {
   useEffect(() => {
     fetchBotStatus();
     fetchBotWalletAddress();
+    fetchBotBalance();
   }, []);
 
   return (
@@ -314,6 +364,23 @@ export default function Home() {
               className="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 disabled:bg-gray-400"
             >
               {loading ? 'Stopping...' : 'Stop Bot'}
+            </button>
+
+            {/* Bot Balance Display */}
+            {botBalance !== null && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="font-semibold text-blue-800 mb-2">Bot Balance</h3>
+                <p className="text-blue-700 text-lg font-bold">{botBalance.toFixed(4)} SOL</p>
+              </div>
+            )}
+
+            {/* Cash Out Button */}
+            <button
+              onClick={cashOutBot}
+              disabled={isCashingOut || !botWalletAddress || (botBalance !== null && botBalance < 0.001)}
+              className="bg-green-600 text-white py-2 px-6 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isCashingOut ? 'Cashing Out...' : 'Cash Out Bot'}
             </button>
           </div>
         </div>
