@@ -1,0 +1,9 @@
+[build]
+buildCommand = "npm install"
+
+[deploy]
+startCommand = "node production-server.js"
+
+[environment]
+NODE_ENV = "production"
+PORT = "8000"
