@@ -1,9 +1,7 @@
-[build]
-buildCommand = "npm ci"
-
 [deploy]
 startCommand = "npm start"
 
 [environment]
 NODE_ENV = "production"
 PORT = "8000"
+SOLANA_RPC_URL = "https://api.devnet.solana.com"
