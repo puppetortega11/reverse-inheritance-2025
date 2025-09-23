@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Bot</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f0f0f0; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        .status { padding: 15px; margin: 15px 0; border-radius: 8px; font-weight: bold; }
+        .health { background: #e8f5e8; color: #2d5a2d; border: 1px solid #4caf50; }
+        .running { background: #e8f5e8; color: #2d5a2d; border: 1px solid #4caf50; }
+        .stopped { background: #ffeaea; color: #8b0000; border: 1px solid #f44336; }
+        button { padding: 12px 24px; margin: 10px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .start { background: #4CAF50; color: white; }
+        .stop { background: #f44336; color: white; }
+        .start:hover { background: #45a049; }
+        .stop:hover { background: #da190b; }
+        .logs { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; height: 250px; overflow-y: auto; font-family: monospace; font-size: 14px; }
+        .log-entry { margin: 5px 0; padding: 5px; border-radius: 3px; }
+        .log-success { background: #d4edda; color: #155724; }
+        .log-error { background: #f8d7da; color: #721c24; }
+        .log-info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Trading Bot</h1>
+        
+        <div id="health" class="status health">🔄 Checking backend connection...</div>
+        
+        <div id="botStatus" class="status stopped">Bot Status: Stopped</div>
+        
+        <div style="text-align: center;">
+            <button id="startBtn" class="start" onclick="startBot()">🚀 Start Bot</button>
+            <button id="stopBtn" class="stop" onclick="stopBot()">🛑 Stop Bot</button>
+        </div>
+        
+        <div id="logs" class="logs">
+            <div class="log-entry log-info">[System] Trading bot interface loaded</div>
+            <div class="log-entry log-info">[System] Ready to connect to backend</div>
+        </div>
+    </div>
+
+    <script>
+        // Backend URL - update this when Railway deploys
+        const BACKEND_URL = 'https://responsible-luck-production.up.railway.app';
+        
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `[${time}] ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+        
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                const data = await response.json();
+                document.getElementById('health').innerHTML = `✅ Backend: ${data.status} (${data.timestamp})`;
+                log('Backend health check: OK', 'success');
+                return true;
+            } catch (error) {
+                document.getElementById('health').innerHTML = `❌ Backend: Offline - ${error.message}`;
+                log(`Backend health check: FAILED - ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function getBotStatus() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/bot/status`);
+                const data = await response.json();
+                const status = data.bot.isRunning ? 'Running' : 'Stopped';
+                const className = data.bot.isRunning ? 'running' : 'stopped';
+                const emoji = data.bot.isRunning ? '🟢' : '🔴';
+                document.getElementById('botStatus').innerHTML = `${emoji} Bot Status: ${status}`;
+                document.getElementById('botStatus').className = `status ${className}`;
+                
+                if (data.bot.isRunning && data.bot.startTime) {
+                    const uptime = Math.floor((Date.now() - data.bot.startTime) / 1000);
+                    log(`Bot uptime: ${uptime} seconds`, 'info');
+                }
+            } catch (error) {
+                log(`Failed to get bot status: ${error.message}`, 'error');
+            }
+        }
+        
+        async function startBot() {
+            try {
+                log('Starting bot...', 'info');
+                const response = await fetch(`${BACKEND_URL}/api/bot/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    log('✅ Bot started successfully!', 'success');
+                    getBotStatus();
+                } else {
+                    log('❌ Failed to start bot', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error starting bot: ${error.message}`, 'error');
+            }
+        }
+        
+        async function stopBot() {
+            try {
+                log('Stopping bot...', 'info');
+                const response = await fetch(`${BACKEND_URL}/api/bot/stop`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    log('🛑 Bot stopped successfully!', 'success');
+                    getBotStatus();
+                } else {
+                    log('❌ Failed to stop bot', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error stopping bot: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialize
+        log('Initializing trading bot interface...', 'info');
+        checkHealth();
+        getBotStatus();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(async () => {
+            const isHealthy = await checkHealth();
+            if (isHealthy) {
+                getBotStatus();
+            }
+        }, 30000);
+        
+        // Update status every 5 seconds
+        setInterval(() => {
+            if (document.getElementById('health').innerHTML.includes('✅')) {
+                getBotStatus();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
