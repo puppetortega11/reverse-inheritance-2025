@@ -1,8 +1,8 @@
 [build]
-buildCommand = "npm install"
+buildCommand = "npm ci"
 
 [deploy]
-startCommand = "node production-server.js"
+startCommand = "npm start"
 
 [environment]
 NODE_ENV = "production"

@@ -4,6 +4,7 @@
   "description": "Minimal backend for testing Railway deployment",
   "main": "production-server.js",
   "scripts": {
+    "build": "echo 'No build step required for Node.js backend'",
     "start": "node production-server.js",
     "start:dev": "NODE_ENV=development node server.js",
     "start:prod": "NODE_ENV=production node production-server.js",
@@ -11,7 +12,8 @@
     "test": "node test-runner.js",
     "test:sandbox": "node e2b-test-runner.js",
     "test:strategies": "node strategy-tester.js",
-    "test:deployment": "node deployment-tests.js"
+    "test:deployment": "node deployment-tests.js",
+    "test:unit": "node deployment-unit-test.js"
   },
   "dependencies": {
     "@e2b/code-interpreter": "^2.0.0",
@@ -23,6 +25,7 @@
     "ws": "^8.14.2"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }
