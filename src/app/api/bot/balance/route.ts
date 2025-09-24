@@ -2,18 +2,35 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { BOT_WALLET_ADDRESS } from '@/config/bot-wallet'
 
-const connection = new Connection('https://solana-api.projectserum.com')
+// Try multiple RPC endpoints for reliability
+const rpcEndpoints = [
+  'https://api.mainnet-beta.solana.com',
+  'https://solana-api.projectserum.com',
+  'https://rpc.ankr.com/solana'
+]
 
 export async function GET() {
   try {
-    // Get bot wallet balance
-    const publicKey = new PublicKey(BOT_WALLET_ADDRESS)
-    const balance = await connection.getBalance(publicKey)
-    const solBalance = balance / LAMPORTS_PER_SOL
+    // Try multiple RPC endpoints for reliability
+    let connection
+    let balance = 0
+    
+    for (const endpoint of rpcEndpoints) {
+      try {
+        connection = new Connection(endpoint)
+        const publicKey = new PublicKey(BOT_WALLET_ADDRESS)
+        const balanceLamports = await connection.getBalance(publicKey)
+        balance = balanceLamports / LAMPORTS_PER_SOL
+        break // If successful, exit the loop
+      } catch (error) {
+        console.log(`Failed to connect to ${endpoint}:`, error)
+        continue // Try next endpoint
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      balance: solBalance,
+      balance: balance,
       address: BOT_WALLET_ADDRESS
     })
   } catch (error) {
