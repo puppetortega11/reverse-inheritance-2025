@@ -1,7 +1,10 @@
 {
-  "name": "reverse-inheritance-frontend",
+  "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "env": {
+    "NEXT_PUBLIC_BACKEND_URL": "https://responsible-luck-production.up.railway.app"
+  }
 }

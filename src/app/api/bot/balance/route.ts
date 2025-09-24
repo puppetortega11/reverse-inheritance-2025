@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { BOT_WALLET_ADDRESS } from '@/config/bot-wallet'
 
-const connection = new Connection('https://api.mainnet-beta.solana.com')
+const connection = new Connection('https://solana-api.projectserum.com')
 
 export async function GET() {
   try {

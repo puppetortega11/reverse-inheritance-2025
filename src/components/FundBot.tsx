@@ -52,7 +52,7 @@ export function FundBot() {
     setStatus('Preparing transaction...')
 
     try {
-      const connection = new Connection('https://api.mainnet-beta.solana.com')
+      const connection = new Connection('https://solana-api.projectserum.com')
       const amountLamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL)
       
       // Create transaction
