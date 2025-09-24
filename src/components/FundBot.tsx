@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { BOT_WALLET_ADDRESS } from '@/config/bot-wallet'
 
 export function FundBot() {
   const { publicKey, sendTransaction, signTransaction } = useWallet()
@@ -12,8 +13,8 @@ export function FundBot() {
   const [status, setStatus] = useState<string>('')
   const [botWalletAddress, setBotWalletAddress] = useState<string>('')
 
-  // Bot wallet address - this should be generated and stored securely
-  const BOT_WALLET_ADDRESS = 'BotWalletAddressHere' // Replace with actual bot wallet
+  // Bot wallet address - real generated wallet
+  const BOT_WALLET_ADDRESS = 'DGPrryYStTsmKkMhkJrTzapbCYKvN3srHJvSHqZCWYP6'
 
   useEffect(() => {
     fetchBotBalance()
@@ -27,6 +28,8 @@ export function FundBot() {
       setBotBalance(data.balance || 0)
     } catch (error) {
       console.error('Failed to fetch bot balance:', error)
+      // Fallback to showing 0 balance
+      setBotBalance(0)
     }
   }
 
@@ -37,6 +40,7 @@ export function FundBot() {
       setBotWalletAddress(data.address || BOT_WALLET_ADDRESS)
     } catch (error) {
       console.error('Failed to fetch bot wallet address:', error)
+      // Fallback to hardcoded address
       setBotWalletAddress(BOT_WALLET_ADDRESS)
     }
   }
