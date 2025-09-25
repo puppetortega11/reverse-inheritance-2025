@@ -14,7 +14,7 @@ export function FundBot() {
   const [botWalletAddress, setBotWalletAddress] = useState<string>('')
 
   // Bot wallet address - real generated wallet
-  const BOT_WALLET_ADDRESS = 'DGPrryYStTsmKkMhkJrTzapbCYKvN3srHJvSHqZCWYP6'
+  // const BOT_WALLET_ADDRESS = 'DGPrryYStTsmKkMhkJrTzapbCYKvN3srHJvSHqZCWYP6' // Removed duplicate
 
   useEffect(() => {
     fetchBotBalance()
@@ -52,7 +52,34 @@ export function FundBot() {
     setStatus('Preparing transaction...')
 
     try {
-      const connection = new Connection('https://solana-api.projectserum.com')
+      // Use multiple RPC endpoints with timeout
+      const rpcEndpoints = [
+        'https://api.mainnet-beta.solana.com',
+        'https://rpc.ankr.com/solana',
+        'https://solana-api.projectserum.com'
+      ]
+      
+      let connection
+      for (const endpoint of rpcEndpoints) {
+        try {
+          connection = new Connection(endpoint, {
+            commitment: 'confirmed',
+            httpHeaders: {
+              'User-Agent': 'TradingBot/1.0'
+            }
+          })
+          // Test connection by getting recent blockhash
+          await connection.getRecentBlockhash()
+          break // If successful, exit the loop
+        } catch (error) {
+          console.log(`Failed to connect to ${endpoint}:`, error)
+          continue // Try next endpoint
+        }
+      }
+      
+      if (!connection) {
+        throw new Error('Failed to connect to any Solana RPC endpoint')
+      }
       const amountLamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL)
       
       // Create transaction
