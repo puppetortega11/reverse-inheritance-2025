@@ -6,6 +6,6 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_BACKEND_URL": "https://responsible-luck-production.up.railway.app"
+    "NEXT_PUBLIC_BACKEND_URL": "https://trading-bot-backend-production.up.railway.app"
   }
 }
