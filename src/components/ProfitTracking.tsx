@@ -29,9 +29,9 @@ export function ProfitTracking() {
 
   const fetchProfitData = async () => {
     try {
-      const response = await fetch(`/api/bot/profits?timeframe=${timeframe}`)
+      const response = await fetch(`/api/profit?timeframe=${timeframe}`)
       const data = await response.json()
-      setProfitData(data.profits)
+      setProfitData(data.data)
     } catch (error) {
       console.error('Failed to fetch profit data:', error)
       // Set mock data for demonstration

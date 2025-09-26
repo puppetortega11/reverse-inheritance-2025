@@ -33,7 +33,7 @@ export function TradingLedger() {
 
   const fetchTrades = async () => {
     try {
-      const response = await fetch('/api/bot/trades')
+      const response = await fetch('/api/trades')
       const data = await response.json()
       setTrades(data.trades || [])
     } catch (error) {

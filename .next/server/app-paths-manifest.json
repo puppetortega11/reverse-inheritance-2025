@@ -1,10 +1,10 @@
 {
   "/api/bot/balance/route": "app/api/bot/balance/route.js",
   "/api/bot/status/route": "app/api/bot/status/route.js",
-  "/api/profit/route": "app/api/profit/route.js",
-  "/api/trades/route": "app/api/trades/route.js",
   "/api/bot/wallet-address/route": "app/api/bot/wallet-address/route.js",
   "/api/bot/strategy/route": "app/api/bot/strategy/route.js",
+  "/api/trades/route": "app/api/trades/route.js",
+  "/api/profit/route": "app/api/profit/route.js",
   "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js"
 }
