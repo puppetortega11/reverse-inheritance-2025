@@ -30,7 +30,7 @@ export function BotControl() {
     try {
       const response = await fetch('/api/bot/status')
       const data = await response.json()
-      setStatus(data.bot)
+      setStatus(data.status)
     } catch (error) {
       console.error('Failed to fetch bot status:', error)
     }
